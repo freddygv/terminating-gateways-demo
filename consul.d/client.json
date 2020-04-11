@@ -1,17 +1,18 @@
 {
-  "service": {
-    "name": "hello-client",
-    "port": 8181,
-    "connect": {
-      "sidecar_service": {
-        "proxy": {
-          "upstreams": [
-            {
-              "destination_name": "hello-server",
-              "local_bind_port": 9191
-            }
-          ]
-        }
+  "name": "hello-client",
+  "connect": {
+    "sidecar_service": {
+      "proxy": {
+        "upstreams": [
+          {
+            "destination_name": "hello-server",
+            "local_bind_port": 9191
+          },
+          {
+            "destination_name": "world-server",
+            "local_bind_port": 9192
+          }
+        ]
       }
     }
   }

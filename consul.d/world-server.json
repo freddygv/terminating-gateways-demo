@@ -1,0 +1,12 @@
+{
+  "name": "world-server",
+  "port": 8081,
+  "checks": [
+    {
+      "name": "HTTP API on port 8081",
+      "http": "http://localhost:8081/healthz",
+      "interval": "10s",
+      "timeout": "1s"
+    }
+  ]
+}

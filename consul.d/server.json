@@ -1,6 +1,0 @@
-{
-  "service": {
-    "name": "hello-server",
-    "port": 8080
-  }
-}
