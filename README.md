@@ -25,9 +25,21 @@
     "http://localhost:8500/v1/agent/service/register"`
 
 * Start the Envoy sidecar for the client.
-
-`$ consul connect envoy -sidecar-for hello-client`
 `$ consul connect envoy -sidecar-for hello-client -- -l trace`
+
+* Register and start the gateway proxy
+
+`$ consul connect envoy -register -gateway=terminating -service=my-gateway -admin-bind=localhost:19001 -- -l trace`
+
+* Configure the gateway
+
+`$ consul config write consul.d/my-gateway.hcl`
+
+* Create default deny intention and then service-specific intentions that allow the connection
+
+`$ consul intention create -deny "*" "*"`
+`$ consul intention create hello-client hello-server`
+`$ consul intention create hello-client world-server`
 
 * Build then start the client and servers.
 
@@ -35,18 +47,3 @@
 `$ hello-server/bin/hello`
 `$ world-server/bin/world`
 `$ hello-world-client/bin/client`
-
-* Configure the gateway
-
-`$ consul config write consul.d/my-gateway.hcl`
-
-* Create default deny intention and service-specific intentions that allow the connection
-
-`$ consul intention create -deny "*" "*"`
-`$ consul intention create hello-client hello-server`
-`$ consul intention create hello-client world-server`
-
-* Register and start the gateway proxy
-
-`$ consul connect envoy -register -gateway=terminating -service=my-gateway -admin-bind=localhost:19001`
-
