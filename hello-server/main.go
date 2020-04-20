@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -13,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -31,6 +34,11 @@ const (
 	prometheusAddr = "localhost:9091"
 	defaultAddr    = "localhost:8080"
 	defaultCfg     = "config.json"
+
+	// TLS config
+	caFile = "hello-server/certs/ca-chain.cert.pem"
+	certFile = "hello-server/certs/localhost.cert.pem"
+	keyFile = "hello-server/certs/localhost.key.pem"
 )
 
 var (
@@ -49,8 +57,14 @@ func main() {
 	var (
 		httpAddr   = flag.String("addr", defaultAddr, "Hello service address.")
 		configFile = flag.String("cfg-file", defaultCfg, "Path to config file.")
+		tls = flag.Bool("tls", false, "Enable authentication")
+		mtls = flag.Bool("mtls", false, "Enable Mutual authentication")
 	)
 	flag.Parse()
+
+	if *mtls {
+		*tls = true
+	}
 
 	log.Printf("[INFO] Starting server...")
 
@@ -72,8 +86,24 @@ func main() {
 	log.Printf("[INFO] Exposing Prometheus metrics on '%s'...", prometheusAddr)
 	go s.runPrometheus(prometheusAddr)
 
-	log.Printf("[INFO] Hello service with HTTP check listening on %s", *httpAddr)
-	log.Fatal(http.ListenAndServe(*httpAddr, s.router))
+	server := &http.Server{Addr: *httpAddr, Handler: s.router}
+	if *tls {
+		server.Addr = "localhost:8443"
+
+		if *mtls {
+			tlsConfig, err := makeTLSConfig(caFile)
+			if err != nil {
+				log.Fatal("failed to make tls config from %s: %v", caFile, err)
+			}
+			server.TLSConfig = tlsConfig
+		}
+
+		log.Printf("[INFO] Hello service listening on %s", server.Addr)
+		log.Fatal(server.ListenAndServeTLS(certFile, keyFile))
+	}
+
+	log.Printf("[INFO] Hello service listening on %s", server.Addr)
+	log.Fatal(server.ListenAndServe())
 }
 
 type server struct {
@@ -99,6 +129,27 @@ func newServer(cfgFile string) *server {
 	s.router.HandleFunc("PUT", "/health/fail", s.disableHealth())
 
 	return &s
+}
+
+func makeTLSConfig(caFile string) (*tls.Config, error) {
+	// Add the cert chain as the intermediate signs both the servers and the clients certificates
+	clientCACert, err := ioutil.ReadFile(caFile)
+	if err != nil {
+		return nil, err
+	}
+
+	clientCertPool := x509.NewCertPool()
+	clientCertPool.AppendCertsFromPEM(clientCACert)
+
+	conf := &tls.Config{
+		ClientAuth:               tls.RequireAndVerifyClientCert,
+		ClientCAs:                clientCertPool,
+		PreferServerCipherSuites: true,
+		MinVersion:               tls.VersionTLS12,
+	}
+
+	conf.BuildNameToCertificate()
+	return conf, nil
 }
 
 // Reload config from file on HUP

@@ -1,99 +1,121 @@
 # Terminating Gateways in Consul Connect
 
 ## Prerequisites
-- consul repo
+- consul git repo
 - envoy
 
 ## Instructions
-### Panes
-1. Hello server
-2. World server
-3. Client
-4. Consul
-5. Client sidecar
-6. Gateway
+### Setup
+* Build `consul` from `https://github.com/hashicorp/consul/pull/7671` (or master if merged) then start a Consul server in dev mode with Connect enabled.
 
-### OSS Setup
-* Build `consul` from master then start a Consul server in dev mode with Connect enabled.
-`$ make dev'`
-`$ consul agent -dev -hcl 'connect = { enabled = true }'`
+`$ make dev`
+
+`$ consul agent -dev -log-level trace`
 
 * Register and start the gateway proxy
 
-`$ consul connect envoy -register -gateway=terminating -service=my-gateway -admin-bind=localhost:19001 -- -l trace`\
+`$ curl -X PUT -d @consul.d/services/my-gateway.json \
+    "http://localhost:8500/v1/agent/service/register"`
+
+`$ consul connect envoy -gateway=terminating -admin-bind=localhost:19001 -- -l trace`
 
 * Configure the gateway
 
-`$ consul config write consul.d/my-gateway.hcl`
+`$ consul config write consul.d/config-entries/my-gateway.hcl`
 
-* Create default deny intention and then service-specific intentions that allow the connection
+* Create default deny intention
 
 `$ consul intention create -deny "*" "*"`
+
+* Register the services.
+
+`$ curl -X PUT -d @consul.d/services/hello-server.json \
+    "http://localhost:8500/v1/agent/service/register"`
+    
+`$ curl -X PUT -d @consul.d/services/world-server-legacy.json \
+    "http://localhost:8500/v1/agent/service/register"`
+
+`$ curl -X PUT -d @consul.d/services/client.json \
+    "http://localhost:8500/v1/agent/service/register"`
+
+or
+
+`./register-services.sh`
+
+* Start the Envoy sidecar for the client.
+
+`$ consul connect envoy -sidecar-for hello-client -- -l trace`
+
+* Build then start the servers.
+
+`$ make`
+
+`$ hello-server/bin/hello`
+
+`$ world-server-legacy/bin/world`
+
+* Run the client
+
+`$ hello-world-client/bin/client -loop=false`
+
+There should be an error, due to the lack of intentions allowing the connection.
+
+* Create intentions that allow the connection:
+
 `$ consul intention create hello-client hello-server`
+
 `$ consul intention create hello-client world-server`
 
-* Register the servers.
+Expected output is: `Hello ...world`
 
-`$ curl -X PUT -d @consul.d/hello-server.json \
+Traffic flows through client's sidecar and terminating gateway to both backing services.
+
+### L7 Routing: Traffic splitting for world-server
+
+* Set up http service default and service resolver
+
+`$ consul config write consul.d/config-entries/world-defaults.hcl`
+
+`$ consul config write consul.d/config-entries/world-resolver.hcl`
+
+* Register then start cloud version of `world-server`:
+
+`$ curl -X PUT -d @consul.d/services/world-server.json \
     "http://localhost:8500/v1/agent/service/register"`
-    
-`$ curl -X PUT -d @consul.d/world-server.json \
-    "http://localhost:8500/v1/agent/service/register"`
 
-`$ curl -X PUT -d @consul.d/client.json \
-    "http://localhost:8500/v1/agent/service/register"`
-
-* Start the Envoy sidecar for the client.
-`$ consul connect envoy -sidecar-for hello-client -- -l trace`
-
-* Build then start the client and servers.
-
-`$ make`
-`$ hello-server/bin/hello`
 `$ world-server/bin/world`
-`$ hello-world-client/bin/client`
 
-### Ent Setup (Once OSS has been merged into Enterprise)
-* Build `consul-enterprise` from master then start a Consul server in dev mode with Connect enabled
+`$ consul connect envoy -sidecar-for world-server-v1 -admin-bind localhost:19002 -- -l trace` 
 
-`$ make dev-build GOTAGS='consulent'`
-`$ consul agent -dev -hcl 'connect = { enabled = true }'`
+* Enable traffic splitting
 
-* Create the `international` namespace
- 
- `$ curl  -X PUT -d '{"Name": "international"}' http://localhost:8500/v1/namespace`
+`$ consul config write consul.d/config-entries/world-splitter.hcl`
 
-* Register and start the gateway proxy
+Expected output is split between: `Hello ...world` and `Hello World`
 
-`$ consul connect envoy -register -gateway=terminating -service=my-gateway -admin-bind=localhost:19001 -- -l trace`\
+Traffic is split between terminating gateway and cloud world-server's sidecar.
 
-* Configure the gateway
+* Dial split up to 100/0
 
-`$ consul config write consul.d/my-gateway-ent.hcl`
+`$ consul config write consul.d/config-entries/world-splitter-100.hcl`
 
-* Create default deny intention and then service-specific intentions that allow the connection
+Expected output is: `Hello World`
 
-`$ consul intention create -deny "*" "*"`
-`$ consul intention create hello-client hello-server`
-`$ consul intention create hello-client international/world-server`
+### TLS Origination for hello-server
 
-* Register the servers.
+* Re-register the service with the new port (8443):
 
-`$ curl -X PUT -d @consul.d/hello-server.json \
-    "http://localhost:8500/v1/agent/service/register"`
-    
-`$ curl -X PUT -d @consul.d/world-server.json \
-    "http://localhost:8500/v1/agent/service/register?ns=international"`
-
-`$ curl -X PUT -d @consul.d/client-ent.json \
+`$ curl -X PUT -d @consul.d/services/hello-server-tls.json \
     "http://localhost:8500/v1/agent/service/register"`
 
-* Start the Envoy sidecar for the client.
-`$ consul connect envoy -sidecar-for hello-client -- -l trace`
+* Restart `hello-server` with mTLS enabled:
 
-* Build then start the client and servers.
+`$ hello-server/bin/hello -mtls`
 
-`$ make`
-`$ hello-server/bin/hello`
-`$ world-server/bin/world`
-`$ hello-world-client/bin/client`
+* Add full TLS config to the gateway
+
+`$ consul config write consul.d/config-entries/my-gateway-mtls.hcl`
+
+Running the client app should work as expected.
+
+Note that the client makes HTTP requests and Envoy upgrades them to HTTPS.

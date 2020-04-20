@@ -1,5 +1,6 @@
 {
   "name": "world-server",
+  "id": "world-server-v1",
   "port": 8081,
   "checks": [
     {
@@ -8,5 +9,9 @@
       "interval": "10s",
       "timeout": "1s"
     }
-  ]
+  ],
+  "tags": ["cloud"],
+  "connect": {
+    "sidecar_service": {}
+  }
 }

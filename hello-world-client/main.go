@@ -13,7 +13,7 @@ import (
 const (
 	helloAddr = "localhost:9191"
 	worldAddr = "localhost:9192"
-	interval = 2 * time.Second
+	interval  = 2 * time.Second
 )
 
 func main() {

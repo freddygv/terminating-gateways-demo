@@ -28,9 +28,9 @@ import (
 const (
 	limiterRate    = 0.1
 	limiterBurst   = 2
-	gRPCAddr       = "localhost:9094"
-	prometheusAddr = "localhost:9095"
-	defaultAddr    = "localhost:8081"
+	gRPCAddr       = "localhost:9092"
+	prometheusAddr = "localhost:9093"
+	defaultAddr    = "localhost:8082"
 	defaultCfg     = "config.json"
 )
 
@@ -177,13 +177,13 @@ func (s *server) handleWorld() http.HandlerFunc {
 
 		switch StringVal(s.cfg.Language) {
 		case "french":
-			fmt.Fprintln(w, "Monde")
+			fmt.Fprintln(w, "...monde")
 		case "portuguese":
-			fmt.Fprintln(w, "Mundo")
+			fmt.Fprintln(w, "...mundo")
 		case "spanish":
-			fmt.Fprintln(w, "Mundo")
+			fmt.Fprintln(w, "...mundo")
 		default:
-			fmt.Fprintln(w, "World")
+			fmt.Fprintln(w, "...world")
 		}
 		httpReqs.Inc()
 	}

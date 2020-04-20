@@ -1,0 +1,14 @@
+{
+  "name": "world-server",
+  "id": "world-server-legacy",
+  "port": 8082,
+  "checks": [
+    {
+      "name": "HTTP API on port 8082",
+      "http": "http://localhost:8082/healthz",
+      "interval": "10s",
+      "timeout": "1s"
+    }
+  ],
+  "tags": ["legacy"]
+}

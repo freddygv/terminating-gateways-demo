@@ -1,0 +1,11 @@
+{
+  "name": "hello-server",
+  "port": 8443,
+  "checks": [
+    {
+      "name": "Hello server status",
+      "ttl": "24h",
+      "status": "passing"
+    }
+  ]
+}
