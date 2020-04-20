@@ -19,6 +19,8 @@
 
 `$ consul connect envoy -gateway=terminating -admin-bind=localhost:19001 -- -l trace`
 
+**Note**: We register the gateway separately in order to add a tag to it. For traffic splitting to work the tags/meta must be present on the gateway itself rather than the linked service. I'm thining of a solution for this, but don't have one ready yet. Also, the CLI does support auto-registration, as with Mesh Gateways. 
+
 * Configure the gateway
 
 `$ consul config write consul.d/config-entries/my-gateway.hcl`
