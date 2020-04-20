@@ -2,13 +2,13 @@
 
 ## Prerequisites
 - consul git repo
-- envoy
+- envoy in PATH
 
 ## Instructions
 ### Setup
 * Build `consul` from `https://github.com/hashicorp/consul/pull/7671` (or master if merged) then start a Consul server in dev mode with Connect enabled.
 
-`$ make dev`
+`$ make dev` (and ensure binary is in PATH)
 
 `$ consul agent -dev -log-level trace`
 
