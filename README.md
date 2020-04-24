@@ -1,14 +1,20 @@
 # Terminating Gateways in Consul Connect
 
+## Goals
+- Represent two backend services (`hello-server` and `world-server`) with a terminating gateway
+- Use intentions to allow connection from a client in the mesh to backend services outside the mesh
+- Migrate `world-server` to the service mesh with traffic splitting
+- Upgrade `hello-server` to require mTLS and re-configure terminating-gateway with certificates
+
 ## Prerequisites
 - consul git repo
-- envoy
+- envoy in PATH
 
 ## Instructions
 ### Setup
 * Build `consul` from `https://github.com/hashicorp/consul/pull/7671` (or master if merged) then start a Consul server in dev mode with Connect enabled.
 
-`$ make dev`
+`$ make dev` (and ensure binary is in PATH)
 
 `$ consul agent -dev -log-level trace`
 
