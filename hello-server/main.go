@@ -88,8 +88,6 @@ func main() {
 
 	server := &http.Server{Addr: *httpAddr, Handler: s.router}
 	if *tls {
-		server.Addr = "localhost:8443"
-
 		if *mtls {
 			tlsConfig, err := makeTLSConfig(caFile)
 			if err != nil {

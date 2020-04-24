@@ -112,7 +112,7 @@ Expected output is: `Hello World`
 
 * Restart `hello-server` with mTLS enabled:
 
-`$ hello-server/bin/hello -mtls`
+`$ hello-server/bin/hello -mtls -addr="localhost:8443"`
 
 * Add full TLS config to the gateway
 
