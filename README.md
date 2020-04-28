@@ -12,7 +12,7 @@
 
 ## Instructions
 ### Setup
-* Build `consul` from `https://github.com/hashicorp/consul/pull/7671` (or master if merged) then start a Consul server in dev mode with Connect enabled.
+* Build `consul` from `https://github.com/hashicorp/consul/pull/7715` (or master if merged) then start a Consul server in dev mode with Connect enabled.
 
 `$ make dev` (and ensure binary is in PATH)
 
